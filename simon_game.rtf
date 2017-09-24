@@ -1,0 +1,378 @@
+{\rtf1\ansi\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset0 Calibri;}}
+{\*\generator Riched20 10.0.14393}\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\f0\fs22\lang9\par
+//////////////////////////////////////////////////////////////////////////////////\par
+// Company: \par
+// Engineer: \par
+// \par
+// Create Date: 02/07/2017 02:05:07 AM\par
+// Design Name: \par
+// Module Name: Controller\par
+// Project Name: \par
+// Target Devices: \par
+// Tool Versions: \par
+// Description: \par
+// \par
+// Dependencies: \par
+// \par
+// Revision:\par
+// Revision 0.01 - File Created\par
+// Additional Comments:\par
+// \par
+//////////////////////////////////////////////////////////////////////////////////\par
+\par
+\par
+module Controller(\par
+    \par
+    output [6:0] seg,\par
+    output [3:0] an,\par
+    output [1:0] led,\par
+    output reg load,\par
+    output reg matchgo,\par
+    output reg displaygo,\par
+    output reg [3:0] winlose,\par
+    output reg turn,\par
+    output reg fivesecreset,\par
+    output reg matchreset,\par
+    output reg halfsecreset,\par
+    input clk,\par
+    input btnL, //Left LED (LED1)\par
+    input btnC, //Start\par
+    input btnR, //Right LED (LED0)\par
+    input [1:0] sw\par
+    );\par
+    \par
+    //initialize variables\par
+    reg [3:0] state;\par
+    reg [2:0] shiftselect;\par
+    reg reset;\par
+    reg [3:0] gamestate;\par
+    reg [3:0] currentstate;\par
+    reg [5:0] counter;\par
+//    reg load, matchgo, matchreset, displaygo, winlose, turn, fivesecreset;\par
+    wire [7:0] pattern;\par
+    wire button0;\par
+    wire button1;\par
+    wire [7:0] onebit;\par
+    wire fivesecelapsed;\par
+    wire displaydone;\par
+    wire correct;\par
+    wire matchdone;\par
+    wire currentbit;\par
+    wire halfsecelapsed;\par
+    reg [1:0] onesec;\par
+//    assign rload=load;\par
+//    assign rmatchgo=matchgo;\par
+//    assign rdisplaygo=displaygo;\par
+//    assign rwinlose=winlose;\par
+//    assign rturn=turn;\par
+//    assign rfivesecreset=fivesecreset;\par
+    assign sw[0] = reset;\par
+    \par
+match matcher(\par
+    \par
+       correct,\par
+       matchdone,\par
+       currentbit,\par
+       btnR,\par
+       btnL,\par
+       matchgo,\par
+       matchreset,\par
+       clk\par
+\par
+        );   \par
+\par
+eighttoonemux shiftmux(\par
+        currentbit,\par
+        pattern,\par
+        shiftselect\par
+    );\par
+            \par
+mux button0mux(\par
+        button0,\par
+        ~currentbit,\par
+        btnR,\par
+        turn\par
+        );\par
+        \par
+mux button1mux(\par
+        button1,\par
+        currentbit,\par
+        btnL,\par
+        turn\par
+        );\par
+\par
+display LEDS(\par
+    \par
+        led[1:0],\par
+        displaydone,\par
+        displaygo,\par
+        button0,\par
+        button1,\par
+        clk\par
+        \par
+        );\par
+        \par
+Pattern stateregister(\par
+        \par
+            pattern,\par
+            load,\par
+            onebit,\par
+            clk\par
+            \par
+            );\par
+            \par
+RNG rng(\par
+                \par
+                onebit,\par
+                clk\par
+                \par
+                );  \par
+                \par
+message yeahlose(\par
+                    clk,\par
+                    winlose,\par
+                    seg,\par
+                    an\par
+                    );\par
+                    \par
+fivesec pause(\par
+            fivesecelapsed,\par
+            clk,\par
+            fivesecreset\par
+            );        \par
+                 \par
+halfsec shortpause(\par
+                halfsecelapsed,\par
+                clk,\par
+                halfsecreset\par
+                );\par
+                                           \par
+always@(posedge clk)\par
+begin\par
+    case(state)\par
+        0:begin //Idle state\par
+             winlose<=1;\par
+             displaygo<=0;\par
+             matchgo<=0;\par
+             matchreset<=0;\par
+             turn<=0;\par
+             load<=0;\par
+             gamestate<=7;\par
+             currentstate<=0;\par
+             counter<=0;\par
+             shiftselect<=0;\par
+             fivesecreset<=1;\par
+             halfsecreset<=1;\par
+             if(reset==1) state<=0;\par
+             else if(reset==0 && btnC==1)\par
+             begin //load the random number\par
+                     load<=1;\par
+                     state<=1;\par
+             end\par
+             else state<=0;\par
+          end\par
+         1:begin //display bits to user\par
+                winlose<=8;\par
+                displaygo<=1;\par
+                matchgo<=0;\par
+                matchreset<=0;\par
+                turn<=0;\par
+                load<=0;\par
+                fivesecreset<=1;\par
+                halfsecreset<=1;\par
+                if(reset==1) state<=0;\par
+                else if(reset==0)\par
+                begin\par
+                    if(displaydone==1)\par
+                    begin\par
+                    displaygo<=0;\par
+                    counter<=counter+1;\par
+                    state<=7;\par
+                    end\par
+                    else state<=1;\par
+                end\par
+           end\par
+          2:begin //user turn to match \par
+                 winlose<=8;\par
+                 displaygo<=1;\par
+                 matchgo<=1;\par
+                 matchreset<=0;\par
+                 turn<=1;\par
+                 load<=0; \par
+                 fivesecreset<=0; \par
+                 halfsecreset<=1;\par
+                 if(reset==1) state<=0;\par
+                 else if(reset==0)\par
+                 begin\par
+                    if(matchdone==1 && displaydone==1)\par
+                    begin\par
+                        if(correct==1) \par
+                        begin\par
+                            displaygo<=0;\par
+                            matchreset<=1;\par
+                            matchgo<=0;\par
+                            state<=8;\par
+                            counter<=counter+1;\par
+                        end    \par
+                        else if(correct==0) state<=4;\par
+                    end\par
+                    else if(fivesecelapsed==1) state<=4;\par
+                    else state<=2;\par
+                 end\par
+            end\par
+          3:begin //win state\par
+                 displaygo<=0;\par
+                 winlose<=4;\par
+                 matchgo<=0;\par
+                 matchreset<=1;\par
+                 turn<=0;\par
+                 load<=0;\par
+                 fivesecreset<=1;\par
+                 halfsecreset<=1;\par
+                 if(reset==1) state<=0;\par
+                 else \par
+                 begin\par
+                    state<=5;\par
+                    fivesecreset<=1;\par
+                 end\par
+            end\par
+          4:begin//lose state\par
+                 displaygo<=0;\par
+                 winlose<=2;\par
+                 matchgo<=0;\par
+                 matchreset<=1;\par
+                 turn<=0;\par
+                 load<=0;\par
+                 fivesecreset<=1;\par
+                 halfsecreset<=1;\par
+                 if(reset==1) state<=0;\par
+                 else\par
+                 begin\par
+                    state<=6;\par
+                    fivesecreset<=1;\par
+                 end\par
+            end\par
+          5:begin//5 second idle stage for win\par
+                 fivesecreset<=0;\par
+                 displaygo<=0;\par
+                 matchgo<=0;\par
+                 matchreset<=1;\par
+                 winlose<=4;\par
+                 turn<=0;\par
+                 load=0;\par
+                 halfsecreset<=1;\par
+                 if(reset==1) state<=0;\par
+                 else if(reset==0)\par
+                 begin\par
+                    if(fivesecelapsed==1)state<=0;\par
+                    else state<=5;\par
+                 end\par
+            end\par
+          6:begin //5 second idle stage for lose\par
+                matchgo<=0;\par
+                matchreset<=1;\par
+                fivesecreset<=0;\par
+                displaygo<=0;\par
+                winlose<=2;\par
+                turn<=0;\par
+                load=0;\par
+                halfsecreset<=1;\par
+                if(reset==1) state<=0;\par
+                else if(reset==0)\par
+                begin\par
+                    if(fivesecelapsed==1) state<=0;\par
+                    else state<=6;\par
+                end\par
+           end\par
+          7:begin //check state of game for displaying bits\par
+                matchgo<=0;\par
+                matchreset<=1;\par
+                fivesecreset<=1;\par
+                displaygo<=0;\par
+                winlose<=8;\par
+                turn<=1;\par
+                load=0;\par
+                halfsecreset<=1;\par
+                if(reset==1) state<=0;\par
+                else if(reset==0) \par
+                begin\par
+                    if(counter>currentstate)\par
+                    begin\par
+                        state<=2;\par
+                        counter<=0;\par
+                        shiftselect<=0;\par
+                    end\par
+                    else \par
+                    begin\par
+                        state<=10;\par
+                        shiftselect<=counter;\par
+                    end\par
+                end \par
+            end\par
+          8:begin//check match state of game\par
+                matchgo<=0;\par
+                matchreset<=1;\par
+                fivesecreset<=1;\par
+                displaygo<=0;\par
+                winlose<=8;\par
+                turn<=1;\par
+                load<=0;\par
+                halfsecreset<=1;\par
+                if(reset==1) state<=0;\par
+                else if(reset==0)\par
+                begin\par
+                    if(counter>gamestate) state<=3;\par
+                    else if(counter>currentstate) \par
+                    begin\par
+                        state<=9;\par
+                        counter<=0;\par
+                        shiftselect<=0;\par
+                        currentstate<=currentstate+1;\par
+                        onesec<=0;\par
+                    end\par
+                    else\par
+                    begin\par
+                        state<=2;\par
+                        shiftselect<=counter;\par
+                    end\par
+                end\par
+            end\par
+          9:begin//delay between game states\par
+                matchgo<=0;\par
+                matchreset<=1;\par
+                fivesecreset<=1;\par
+                displaygo<=0;\par
+                winlose<=8;\par
+                turn<=0;\par
+                load<=0;\par
+                halfsecreset<=0;\par
+                if(reset==1) state<=0;\par
+                else if(reset==0)\par
+                begin\par
+                    if(onesec==3) state<=1;\par
+                    else state<=9;\par
+                    if(halfsecelapsed==1) onesec<=onesec+1;\par
+                end\par
+            end\par
+          10:begin //delay between display states\par
+                matchgo<=0;\par
+                matchreset<=1;\par
+                fivesecreset<=1;\par
+                displaygo<=0;\par
+                winlose<=8;\par
+                turn<=0;\par
+                load<=0;\par
+                halfsecreset<=0;\par
+                if(reset==1) state<=0;\par
+                else if(reset==0)\par
+                begin\par
+                    if(halfsecelapsed==1) state<=1;\par
+                    else state<=10;\par
+                end\par
+             end\par
+       endcase\par
+    end     \par
+endmodule\par
+}
+ 
