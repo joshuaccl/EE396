@@ -1,1 +1,3 @@
-# EE396
+# Simon Says
+
+Video game implemented on the Digilent FPGA board for an EE 396 project. The simon says video game begins when the start button is pressed. Next a random sequence of bits is generated based on the internal software random number generator. The random number generator is based on the internal clock of the Digilent board. The game progresses in stages of displaying the bits. Stage one will show the first bit, stage two will show the first then the second, and so on and so forth. The player must then match the bits to continue onto the next stage. Any wrong input or no input for five seconds results in a loss. A win is determined if the player reaches the eighth stage and successfully matches the eight bits.
